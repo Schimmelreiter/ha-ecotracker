@@ -126,7 +126,8 @@ class EcoTrackerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _LOGGER.warning("Restart over %s failed: %s", self.switch, err)
         finally:
             self.restarting = False
-        self.restarts += 1
+        if self.offline_since is not None:  # a restart by hand while online is no outage
+            self.restarts += 1
         self.last_restart = dt_util.utcnow()
         self.async_update_listeners()
 

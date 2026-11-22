@@ -170,3 +170,16 @@ async def test_one_success_no_summary(hass: HomeAssistant, aioclient_mock, freez
         await hass.async_block_till_done()
         assert entry.runtime_data.restarts == 0
         assert not sent
+
+
+async def test_button_while_online(hass: HomeAssistant, aioclient_mock) -> None:
+    off = async_mock_service(hass, "switch", "turn_off")
+    on = async_mock_service(hass, "switch", "turn_on")
+    aioclient_mock.get(URL, json=ANSWER)
+    with patch("custom_components.ecotracker.coordinator.asyncio.sleep", AsyncMock()):
+        entry = await _setup(hass, {"switch": "switch.s"})
+        await hass.services.async_call("button", "press", {"entity_id": "button.ecotracker_restart"}, blocking=True)
+        await hass.async_block_till_done()
+    assert len(off) == 1 and len(on) == 1
+    assert entry.runtime_data.restarts == 0  # no outage, nothing to count
+    assert entry.runtime_data.last_restart is not None
