@@ -1,0 +1,83 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "EcoTracker",
+        "data": {
+          "host": "Host"
+        },
+        "data_description": {
+          "host": "Hostname oder IP des EcoTrackers"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "EcoTracker antwortet nicht unter http://<host>/v1/json"
+    },
+    "abort": {
+      "already_configured": "Dieser EcoTracker ist schon eingerichtet"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Abfrage und Watchdog",
+        "data": {
+          "scan_interval": "Abfrageintervall",
+          "switch": "Vorgelagerter Schaltkontakt",
+          "offline_minutes": "Neustart nach so vielen Minuten offline",
+          "notify_entities": "Benachrichtigen (Notify-Entit\u00e4ten)",
+          "notify_services": "Benachrichtigen (Notify-Dienste, z. B. mobile_app_handy)"
+        },
+        "data_description": {
+          "switch": "Steckdose, \u00fcber die der EcoTracker Strom bekommt. Leer = kein Watchdog.",
+          "notify_services": "Meldung ab dem 2. Neustart und eine Zusammenfassung, wenn er wieder da ist."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "aktueller_verbrauch": {
+        "name": "Aktueller Verbrauch"
+      },
+      "durchschnittlicher_verbrauch": {
+        "name": "Durchschnittlicher Verbrauch"
+      },
+      "leistung_l1": {
+        "name": "Leistung L1"
+      },
+      "leistung_l2": {
+        "name": "Leistung L2"
+      },
+      "leistung_l3": {
+        "name": "Leistung L3"
+      },
+      "bezug": {
+        "name": "Bezug"
+      },
+      "einspeisung": {
+        "name": "Einspeisung"
+      },
+      "signalstaerke": {
+        "name": "Signalst\u00e4rke"
+      },
+      "alter_messwert": {
+        "name": "Alter des Messwerts"
+      },
+      "watchdog_neustarts": {
+        "name": "Watchdog-Neustarts"
+      }
+    },
+    "binary_sensor": {
+      "erreichbar": {
+        "name": "Erreichbar"
+      }
+    },
+    "button": {
+      "neustart": {
+        "name": "Neustart"
+      }
+    }
+  }
+}

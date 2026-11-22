@@ -1,0 +1,83 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "EcoTracker",
+        "data": {
+          "host": "Host"
+        },
+        "data_description": {
+          "host": "Host name or IP of the EcoTracker"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "The EcoTracker does not answer at http://<host>/v1/json"
+    },
+    "abort": {
+      "already_configured": "This EcoTracker is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Polling and watchdog",
+        "data": {
+          "scan_interval": "Polling interval",
+          "switch": "Upstream switch",
+          "offline_minutes": "Restart after this many minutes offline",
+          "notify_entities": "Notify (notify entities)",
+          "notify_services": "Notify (notify services, e.g. mobile_app_phone)"
+        },
+        "data_description": {
+          "switch": "Socket that powers the EcoTracker. Empty = no watchdog.",
+          "notify_services": "Message from the 2nd restart on and a summary when it is back."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "aktueller_verbrauch": {
+        "name": "Current consumption"
+      },
+      "durchschnittlicher_verbrauch": {
+        "name": "Average consumption"
+      },
+      "leistung_l1": {
+        "name": "Power L1"
+      },
+      "leistung_l2": {
+        "name": "Power L2"
+      },
+      "leistung_l3": {
+        "name": "Power L3"
+      },
+      "bezug": {
+        "name": "Energy import"
+      },
+      "einspeisung": {
+        "name": "Energy export"
+      },
+      "signalstaerke": {
+        "name": "Signal strength"
+      },
+      "alter_messwert": {
+        "name": "Age of reading"
+      },
+      "watchdog_neustarts": {
+        "name": "Watchdog restarts"
+      }
+    },
+    "binary_sensor": {
+      "erreichbar": {
+        "name": "Reachable"
+      }
+    },
+    "button": {
+      "neustart": {
+        "name": "Restart"
+      }
+    }
+  }
+}
