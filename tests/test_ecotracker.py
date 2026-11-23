@@ -183,3 +183,15 @@ async def test_button_while_online(hass: HomeAssistant, aioclient_mock) -> None:
     assert len(off) == 1 and len(on) == 1
     assert entry.runtime_data.restarts == 0  # no outage, nothing to count
     assert entry.runtime_data.last_restart is not None
+
+
+async def test_wlan_sensor(hass: HomeAssistant, aioclient_mock, entity_registry) -> None:
+    """The Wi-Fi network the EcoTracker reports (diagnostic, off by default)."""
+    aioclient_mock.get(URL, json=ANSWER)
+    entry = await _setup(hass)
+    eid = "sensor.ecotracker_wi_fi_network"
+    assert entity_registry.async_get(eid).disabled_by is not None
+    entity_registry.async_update_entity(eid, disabled_by=None)
+    await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert hass.states.get(eid).state == "x"

@@ -63,6 +63,10 @@ SENSORS = (
         entity_category=EntityCategory.DIAGNOSTIC, entity_registry_enabled_default=False,
     ),
     EcoTrackerSensorDescription(
+        key="wlan", value=lambda data: data.get("ssid") or None,
+        entity_category=EntityCategory.DIAGNOSTIC, entity_registry_enabled_default=False,
+    ),
+    EcoTrackerSensorDescription(
         key="alter_messwert", value=_num("agePower", 0.001, 1), device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.SECONDS, state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC, entity_registry_enabled_default=False,

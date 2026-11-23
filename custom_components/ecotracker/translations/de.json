@@ -62,6 +62,9 @@
       "signalstaerke": {
         "name": "Signalst\u00e4rke"
       },
+      "wlan": {
+        "name": "WLAN"
+      },
       "alter_messwert": {
         "name": "Alter des Messwerts"
       },

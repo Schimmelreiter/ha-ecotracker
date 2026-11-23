@@ -62,6 +62,9 @@
       "signalstaerke": {
         "name": "Signal strength"
       },
+      "wlan": {
+        "name": "Wi-Fi network"
+      },
       "alter_messwert": {
         "name": "Age of reading"
       },
