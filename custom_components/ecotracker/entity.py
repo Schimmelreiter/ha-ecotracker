@@ -20,10 +20,14 @@ class EcoTrackerEntity(CoordinatorEntity[EcoTrackerCoordinator]):
         entry = coordinator.config_entry
         self._attr_unique_id = f"{entry.unique_id or entry.entry_id}_{key}"
         self._attr_translation_key = key
+        data = coordinator.data or {}
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.unique_id or entry.entry_id)},
             name=entry.title,
             manufacturer="everHome",
             model="EcoTracker",
             configuration_url=f"http://{coordinator.host}/",
+            # newer firmware reports these in /v1/json
+            sw_version=data.get("firmwareVersion") or None,
+            serial_number=coordinator.serial,
         )

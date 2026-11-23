@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -31,6 +31,9 @@ class EcoTrackerSensorDescription(SensorEntityDescription):
     """A value of /v1/json."""
 
     value: Callable[[dict[str, Any]], Any]
+    # JSON key that not every EcoTracker or meter delivers (e.g. tariff counters of a two-tariff meter):
+    # the entity is created disabled when the first answer lacks it
+    optional: str | None = None
 
 
 def _num(key: str, factor: float = 1.0, digits: int | None = None) -> Callable[[dict[str, Any]], Any]:
@@ -51,12 +54,20 @@ ENERGY = {"device_class": SensorDeviceClass.ENERGY, "state_class": SensorStateCl
 
 SENSORS = (
     EcoTrackerSensorDescription(key="aktueller_verbrauch", value=_num("power"), **POWER),
-    EcoTrackerSensorDescription(key="durchschnittlicher_verbrauch", value=_num("powerAvg"), **POWER),
-    EcoTrackerSensorDescription(key="leistung_l1", value=_num("powerPhase1"), **POWER),
-    EcoTrackerSensorDescription(key="leistung_l2", value=_num("powerPhase2"), **POWER),
-    EcoTrackerSensorDescription(key="leistung_l3", value=_num("powerPhase3"), **POWER),
+    EcoTrackerSensorDescription(key="durchschnittlicher_verbrauch", value=_num("powerAvg"), optional="powerAvg", **POWER),
+    EcoTrackerSensorDescription(key="leistung_l1", value=_num("powerPhase1"), optional="powerPhase1", **POWER),
+    EcoTrackerSensorDescription(key="leistung_l2", value=_num("powerPhase2"), optional="powerPhase2", **POWER),
+    EcoTrackerSensorDescription(key="leistung_l3", value=_num("powerPhase3"), optional="powerPhase3", **POWER),
     EcoTrackerSensorDescription(key="bezug", value=_num("energyCounterIn", 0.001, 3), **ENERGY),
-    EcoTrackerSensorDescription(key="einspeisung", value=_num("energyCounterOut", 0.001, 3), **ENERGY),
+    EcoTrackerSensorDescription(
+        key="bezug_t1", value=_num("energyCounterInT1", 0.001, 3), optional="energyCounterInT1", **ENERGY
+    ),
+    EcoTrackerSensorDescription(
+        key="bezug_t2", value=_num("energyCounterInT2", 0.001, 3), optional="energyCounterInT2", **ENERGY
+    ),
+    EcoTrackerSensorDescription(
+        key="einspeisung", value=_num("energyCounterOut", 0.001, 3), optional="energyCounterOut", **ENERGY
+    ),
     EcoTrackerSensorDescription(
         key="signalstaerke", value=_num("rssi"), device_class=SensorDeviceClass.SIGNAL_STRENGTH,
         native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT, state_class=SensorStateClass.MEASUREMENT,
@@ -79,7 +90,14 @@ async def async_setup_entry(
 ) -> None:
     """Add the sensors."""
     coordinator = entry.runtime_data
-    entities: list[SensorEntity] = [EcoTrackerSensor(coordinator, d) for d in SENSORS]
+    data = coordinator.data or {}
+    entities: list[SensorEntity] = [
+        EcoTrackerSensor(
+            coordinator,
+            replace(d, entity_registry_enabled_default=False) if d.optional and d.optional not in data else d,
+        )
+        for d in SENSORS
+    ]
     entities.append(WatchdogRestarts(coordinator))
     async_add_entities(entities)
 

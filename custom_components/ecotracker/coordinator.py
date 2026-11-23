@@ -65,6 +65,7 @@ class EcoTrackerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             update_interval=timedelta(seconds=opts.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)),
         )
         self.host: str = entry.data[CONF_HOST]
+        self.mdns: dict[str, str] = {}  # TXT record of the device (serial, productid)
         self.switch: str | None = opts.get(CONF_SWITCH) or None
         self.offline_minutes: float = opts.get(CONF_OFFLINE_MINUTES, DEFAULT_OFFLINE_MINUTES)
         self.notify_entities: list[str] = list(opts.get(CONF_NOTIFY_ENTITIES) or [])
@@ -87,6 +88,11 @@ class EcoTrackerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if self.offline_since is not None:
             await self._back_online()
         return data
+
+    @property
+    def serial(self) -> str | None:
+        """Serial from /v1/json (newer firmware) or from the mDNS TXT record."""
+        return (self.data or {}).get("serial") or self.mdns.get("serial") or None
 
     # --- watchdog ---------------------------------------------------------------------
 

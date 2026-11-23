@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import timedelta
+from ipaddress import ip_address
 from unittest.mock import AsyncMock, patch
 
 import aiohttp
@@ -16,6 +18,7 @@ from pytest_homeassistant_custom_component.common import (
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 from homeassistant.util import dt as dt_util
 
 from custom_components.ecotracker.const import DOMAIN
@@ -30,6 +33,26 @@ ANSWER = {
 @pytest.fixture(autouse=True)
 def _custom(enable_custom_integrations):
     yield
+
+
+@pytest.fixture(autouse=True)
+def mdns():
+    """No real mDNS or DNS in tests; tests set the TXT answer and the IPs."""
+    answer: dict = {}
+    ips = {"ecotracker.home": "192.168.75.245", "192.168.75.245": "192.168.75.245"}
+
+    async def info(host, port=5353):
+        return dict(answer)
+
+    async def resolve(self, host):
+        return ips.get(host)
+
+    with (
+        patch("custom_components.ecotracker.async_mdns_info", side_effect=info),
+        patch("custom_components.ecotracker.config_flow.async_mdns_info", side_effect=info),
+        patch("custom_components.ecotracker.config_flow.EcoTrackerConfigFlow._ip", resolve),
+    ):
+        yield answer
 
 
 async def _setup(hass: HomeAssistant, options: dict | None = None) -> MockConfigEntry:
@@ -195,3 +218,128 @@ async def test_wlan_sensor(hass: HomeAssistant, aioclient_mock, entity_registry)
     await hass.config_entries.async_reload(entry.entry_id)
     await hass.async_block_till_done()
     assert hass.states.get(eid).state == "x"
+
+
+async def test_optional_values_disabled_when_missing(hass: HomeAssistant, aioclient_mock, entity_registry) -> None:
+    """A one-tariff meter: the tariff counters are created disabled; the delivered values stay enabled."""
+    aioclient_mock.get(URL, json=ANSWER)
+    await _setup(hass)
+    for eid in ("sensor.ecotracker_energy_import_tariff_1", "sensor.ecotracker_energy_import_tariff_2"):
+        assert entity_registry.async_get(eid).disabled_by is not None
+    for eid in ("sensor.ecotracker_energy_export", "sensor.ecotracker_power_l1", "sensor.ecotracker_average_consumption"):
+        assert entity_registry.async_get(eid).disabled_by is None
+
+
+async def test_two_tariff_meter_and_device_info(hass: HomeAssistant, aioclient_mock, device_registry) -> None:
+    """A two-tariff meter: the tariff counters are enabled; serial and firmware go into the device."""
+    aioclient_mock.get(URL, json={**ANSWER, "energyCounterInT1": 2000000, "energyCounterInT2": 345678,
+                                  "serial": "abc123", "firmwareVersion": "1.2.3"})
+    entry = await _setup(hass)
+    assert float(hass.states.get("sensor.ecotracker_energy_import_tariff_1").state) == pytest.approx(2000)
+    assert float(hass.states.get("sensor.ecotracker_energy_import_tariff_2").state) == pytest.approx(345.678)
+    dev = next(iter(device_registry.devices.get_devices_for_config_entry_id(entry.entry_id)))
+    assert (dev.serial_number, dev.sw_version) == ("abc123", "1.2.3")
+
+
+ZC = ZeroconfServiceInfo(
+    ip_address=ip_address("192.168.75.245"), ip_addresses=[ip_address("192.168.75.245")], port=80,
+    hostname="ecotracker-B43A45DE6E68.local.", type="_everhome._tcp.local.",
+    name="ecotracker-B43A45DE6E68._everhome._tcp.local.",
+    properties={"productid": "1137", "serial": "3b9ec21c63c4", "ip": "192.168.75.245"},
+)
+
+
+async def test_serial_from_mdns(hass: HomeAssistant, aioclient_mock, device_registry, mdns) -> None:
+    mdns["serial"] = "3b9ec21c63c4"
+    aioclient_mock.get(URL, json=ANSWER)
+    entry = await _setup(hass)
+    assert entry.runtime_data.serial == "3b9ec21c63c4"
+    device = device_registry.async_get_device(identifiers={(DOMAIN, "ecotracker.home")})
+    assert device.serial_number == "3b9ec21c63c4"  # unique ID of old entries stays the host
+
+
+async def test_flow_uses_serial(hass: HomeAssistant, aioclient_mock, mdns) -> None:
+    mdns["serial"] = "3b9ec21c63c4"
+    aioclient_mock.get(URL, json=ANSWER)
+    res = await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
+    with patch("custom_components.ecotracker.async_setup_entry", return_value=True):
+        res = await hass.config_entries.flow.async_configure(res["flow_id"], {"host": "ecotracker.home"})
+    assert res["type"] is FlowResultType.CREATE_ENTRY
+    assert res["result"].unique_id == "3b9ec21c63c4"
+
+
+async def test_flow_finds_old_entry_by_ip(hass: HomeAssistant, aioclient_mock, mdns) -> None:
+    mdns["serial"] = "3b9ec21c63c4"
+    aioclient_mock.get("http://192.168.75.245/v1/json", json=ANSWER)
+    MockConfigEntry(domain=DOMAIN, unique_id="ecotracker.home", data={"host": "ecotracker.home"}).add_to_hass(hass)
+    res = await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
+    res = await hass.config_entries.flow.async_configure(res["flow_id"], {"host": "192.168.75.245"})
+    assert res["type"] is FlowResultType.ABORT
+    assert res["reason"] == "already_configured"
+
+
+async def test_zeroconf(hass: HomeAssistant, aioclient_mock) -> None:
+    aioclient_mock.get("http://192.168.75.245/v1/json", json=ANSWER)
+    res = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_ZEROCONF}, data=ZC)
+    assert res["type"] is FlowResultType.FORM
+    assert res["step_id"] == "zeroconf_confirm"
+    with patch("custom_components.ecotracker.async_setup_entry", return_value=True):
+        res = await hass.config_entries.flow.async_configure(res["flow_id"], {})
+    assert res["type"] is FlowResultType.CREATE_ENTRY
+    assert res["data"] == {"host": "192.168.75.245"}
+    assert res["result"].unique_id == "3b9ec21c63c4"
+
+
+@pytest.mark.parametrize("unique_id", ["ecotracker.home", "3b9ec21c63c4"])
+async def test_zeroconf_already_configured(hass: HomeAssistant, unique_id) -> None:
+    entry = MockConfigEntry(domain=DOMAIN, unique_id=unique_id, data={"host": "ecotracker.home"})
+    entry.add_to_hass(hass)
+    res = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_ZEROCONF}, data=ZC)
+    assert res["type"] is FlowResultType.ABORT
+    assert res["reason"] == "already_configured"
+    assert entry.data["host"] == "ecotracker.home"  # the host name the user entered stays
+
+
+async def test_mdns_unicast(hass: HomeAssistant, socket_enabled) -> None:
+    """Real query against a small responder on 127.0.0.1 that answers like the EcoTracker."""
+    from zeroconf import DNSIncoming, DNSOutgoing, DNSPointer, DNSText
+    from zeroconf.const import _CLASS_IN, _FLAGS_AA, _FLAGS_QR_RESPONSE, _TYPE_PTR, _TYPE_TXT
+
+    from custom_components.ecotracker import mdns as m
+
+    name = "ecotracker-B43A45DE6E68._everhome._tcp.local."
+    txt = b"".join(bytes([len(x)]) + x for x in (b"productid=1137", b"serial=3b9ec21c63c4", b"ip=127.0.0.1"))
+    asked = []
+
+    class Responder(asyncio.DatagramProtocol):
+        def connection_made(self, transport):
+            self.transport = transport
+
+        def datagram_received(self, data, addr):
+            q = DNSIncoming(data).questions[0]
+            asked.append(q.type)
+            out = DNSOutgoing(_FLAGS_QR_RESPONSE | _FLAGS_AA, multicast=False)
+            if q.type == _TYPE_PTR:  # like the device: PTR only, TXT needs a second question
+                out.add_answer_at_time(DNSPointer(m.SERVICE, _TYPE_PTR, _CLASS_IN, 120, name), 0)
+            else:
+                out.add_answer_at_time(DNSText(name, _TYPE_TXT, _CLASS_IN, 120, txt), 0)
+            self.transport.sendto(out.packets()[0], addr)
+
+    loop = asyncio.get_running_loop()
+    transport, _ = await loop.create_datagram_endpoint(Responder, local_addr=("127.0.0.1", 0))
+    try:
+        port = transport.get_extra_info("sockname")[1]
+        assert await m.async_mdns_info("127.0.0.1", port) == {
+            "productid": "1137", "serial": "3b9ec21c63c4", "ip": "127.0.0.1"}
+        assert asked == [_TYPE_PTR, _TYPE_TXT]
+    finally:
+        transport.close()
+
+
+async def test_mdns_no_answer(hass: HomeAssistant, socket_enabled) -> None:
+    from custom_components.ecotracker import mdns as m
+
+    with patch.object(m, "TIMEOUT", 0.2):
+        assert await m.async_mdns_info("127.0.0.1", 9) == {}

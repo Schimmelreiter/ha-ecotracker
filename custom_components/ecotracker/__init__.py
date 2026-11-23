@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from homeassistant.const import Platform
+import asyncio
+
+from homeassistant.const import CONF_HOST, Platform
 from homeassistant.core import HomeAssistant
 
 from .coordinator import EcoTrackerConfigEntry, EcoTrackerCoordinator
+from .mdns import async_mdns_info
 
 PLATFORMS = [Platform.BINARY_SENSOR, Platform.BUTTON, Platform.SENSOR]
 
@@ -13,7 +16,8 @@ PLATFORMS = [Platform.BINARY_SENSOR, Platform.BUTTON, Platform.SENSOR]
 async def async_setup_entry(hass: HomeAssistant, entry: EcoTrackerConfigEntry) -> bool:
     """Set up from a config entry."""
     coordinator = EcoTrackerCoordinator(hass, entry)
-    await coordinator.async_refresh()  # an offline EcoTracker must not stop the watchdog
+    # an offline EcoTracker must not stop the watchdog; mDNS only adds the serial
+    _, coordinator.mdns = await asyncio.gather(coordinator.async_refresh(), async_mdns_info(entry.data[CONF_HOST]))
     entry.runtime_data = coordinator
     coordinator.start_watchdog()
     entry.async_on_unload(entry.add_update_listener(_reload))

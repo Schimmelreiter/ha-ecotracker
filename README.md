@@ -6,7 +6,12 @@ for electricity meters. It reads the EcoTracker's local JSON API (`http://<host>
 ## Features
 
 - **Sensors:** current and average power, power per phase (L1 to L3), energy drawn from and fed into the grid
-  (kWh, ready for the energy dashboard), Wi-Fi signal strength and the age of the last reading.
+  (kWh, ready for the energy dashboard), Wi-Fi signal strength and network, and the age of the last reading.
+- **Two-tariff meters:** energy drawn in tariff 1 and tariff 2. Values the EcoTracker does not deliver
+  (for example the tariff counters with a one-tariff meter) are created as disabled entities.
+- **Device info:** firmware version, if the EcoTracker reports it, and the serial number, from the JSON API
+  or from the EcoTracker's mDNS record (asked directly, so it also works where multicast does not reach).
+- **Discovery:** Home Assistant offers EcoTrackers it finds over mDNS (`_everhome._tcp`).
 - **Reachable:** a binary sensor that shows whether the EcoTracker answers.
 - **Restart button:** switches the EcoTracker off and on again through the switch that powers it.
 - **Watchdog (optional):** if you power the EcoTracker through a smart socket, the integration restarts it
@@ -19,7 +24,8 @@ for electricity meters. It reads the EcoTracker's local JSON API (`http://<host>
    `https://github.com/Schimmelreiter/ha-ecotracker` as an **Integration**.
 2. Install **everHome EcoTracker** and restart Home Assistant.
 3. Go to **Settings > Devices & services > Add integration** and choose **everHome EcoTracker**.
-   Enter the host name or IP address of the EcoTracker (default `ecotracker.home`).
+   Enter the host name or IP address of the EcoTracker (default `ecotracker.home`), or confirm an
+   EcoTracker that Home Assistant has found.
 
 ## Options
 

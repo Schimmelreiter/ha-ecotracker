@@ -9,13 +9,18 @@
         "data_description": {
           "host": "Host name or IP of the EcoTracker"
         }
+      },
+      "zeroconf_confirm": {
+        "title": "EcoTracker found",
+        "description": "Add the EcoTracker at {host}?"
       }
     },
     "error": {
       "cannot_connect": "The EcoTracker does not answer at http://<host>/v1/json"
     },
     "abort": {
-      "already_configured": "This EcoTracker is already configured"
+      "already_configured": "This EcoTracker is already configured",
+      "cannot_connect": "The EcoTracker does not answer at http://<host>/v1/json"
     }
   },
   "options": {
@@ -55,6 +60,12 @@
       },
       "bezug": {
         "name": "Energy import"
+      },
+      "bezug_t1": {
+        "name": "Energy import tariff 1"
+      },
+      "bezug_t2": {
+        "name": "Energy import tariff 2"
       },
       "einspeisung": {
         "name": "Energy export"

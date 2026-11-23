@@ -9,13 +9,18 @@
         "data_description": {
           "host": "Hostname oder IP des EcoTrackers"
         }
+      },
+      "zeroconf_confirm": {
+        "title": "EcoTracker gefunden",
+        "description": "EcoTracker unter {host} hinzufügen?"
       }
     },
     "error": {
       "cannot_connect": "EcoTracker antwortet nicht unter http://<host>/v1/json"
     },
     "abort": {
-      "already_configured": "Dieser EcoTracker ist schon eingerichtet"
+      "already_configured": "Dieser EcoTracker ist schon eingerichtet",
+      "cannot_connect": "EcoTracker antwortet nicht unter http://<host>/v1/json"
     }
   },
   "options": {
@@ -26,11 +31,11 @@
           "scan_interval": "Abfrageintervall",
           "switch": "Vorgelagerter Schaltkontakt",
           "offline_minutes": "Neustart nach so vielen Minuten offline",
-          "notify_entities": "Benachrichtigen (Notify-Entit\u00e4ten)",
+          "notify_entities": "Benachrichtigen (Notify-Entitäten)",
           "notify_services": "Benachrichtigen (Notify-Dienste, z. B. mobile_app_handy)"
         },
         "data_description": {
-          "switch": "Steckdose, \u00fcber die der EcoTracker Strom bekommt. Leer = kein Watchdog.",
+          "switch": "Steckdose, über die der EcoTracker Strom bekommt. Leer = kein Watchdog.",
           "notify_services": "Meldung ab dem 2. Neustart und eine Zusammenfassung, wenn er wieder da ist."
         }
       }
@@ -56,11 +61,17 @@
       "bezug": {
         "name": "Bezug"
       },
+      "bezug_t1": {
+        "name": "Bezug Tarif 1"
+      },
+      "bezug_t2": {
+        "name": "Bezug Tarif 2"
+      },
       "einspeisung": {
         "name": "Einspeisung"
       },
       "signalstaerke": {
-        "name": "Signalst\u00e4rke"
+        "name": "Signalstärke"
       },
       "wlan": {
         "name": "WLAN"
